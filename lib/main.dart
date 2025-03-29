@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:p_chat/login_screen.dart';
+import 'package:p_chat/gorouter.dart';
 
 void main() {
   runApp(const MyApp());
@@ -8,15 +8,14 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
+    return MaterialApp.router(
+      title: 'YakChat',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const LoginScreen(),
+      routerConfig: router,
     );
   }
 }
