@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:p_chat/chatscreen/chat_list_screen.dart';
+import 'package:p_chat/chatscreen/ChatTab.dart';
 import 'package:p_chat/homeTab.dart';
+import 'package:p_chat/loginbutton/google_sign_in/sign_out_buttom.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -18,15 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _screens = <Widget>[
-      HomeTab(
-        userName: _userName,
-        onChatTabSelected: () {
-          _onItemTapped(1);
-        },
-      ),
-      const ChatListScreen(),
-    ];
+    _screens = <Widget>[HomeTab(userName: _userName), const ChatTab()];
   }
 
   void _onItemTapped(int index) {
@@ -47,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text(_selectedIndex == 0 ? 'HOME' : 'トーク'),
         actions: [
+          const SignOutButton(),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: _onSettingsTapped,

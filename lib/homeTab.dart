@@ -1,14 +1,69 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:p_chat/chatscreen/chat_detail_screen.dart';
+import 'package:p_chat/chatscreen/chat_logic.dart';
 
 class HomeTab extends StatelessWidget {
   final String userName;
-  final VoidCallback onChatTabSelected;
 
-  const HomeTab({
-    Key? key,
-    required this.userName,
-    required this.onChatTabSelected,
-  }) : super(key: key);
+  const HomeTab({Key? key, required this.userName}) : super(key: key);
+
+  // メンバータップ時の処理
+  void _onMemberTapped(BuildContext context, String partnerName) async {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
+    ChatService chatService = ChatService();
+
+    // 既にチャットが存在するか確認
+    String? existingChatId = await chatService.getExistingChat(
+      partnerName: partnerName,
+      currentUserId: currentUserId,
+    );
+
+    if (existingChatId != null) {
+      // 既存チャットがあれば、直接チャット画面へ遷移
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatDetailScreen(chatId: existingChatId),
+        ),
+      );
+      return;
+    }
+
+    // 初回チャットの場合、バナー（ここではダイアログ）で確認
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text('$partnerName とのチャット'),
+            content: Text('$partnerName とのチャットを開始しますか？'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('いいえ'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('はい'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirm == true) {
+      // ユーザーが新規チャット作成を選択した場合、チャット作成して画面遷移
+      String chatId = await chatService.createChat(
+        partnerName: partnerName,
+        currentUserId: currentUserId,
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatDetailScreen(chatId: chatId),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,8 +105,7 @@ class HomeTab extends StatelessWidget {
                     size: 12,
                     color: online ? Colors.green : Colors.grey,
                   ),
-                  // タップ時にチャットタブへ切り替え
-                  onTap: onChatTabSelected,
+                  onTap: () => _onMemberTapped(context, name),
                 );
               },
             ),

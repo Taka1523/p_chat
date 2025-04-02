@@ -11,7 +11,6 @@ class ChatTab extends StatelessWidget {
       initialRoute: '/',
       onGenerateRoute: (RouteSettings settings) {
         WidgetBuilder builder;
-        // settings.name でルートを判断。例: '/'（一覧）または '/chat/:id'
         switch (settings.name) {
           case '/':
             builder = (BuildContext context) => const ChatListScreen();
@@ -20,7 +19,9 @@ class ChatTab extends StatelessWidget {
             if (settings.name!.startsWith('/chat/')) {
               final chatId = settings.name!.replaceFirst('/chat/', '');
               builder =
-                  (BuildContext context) => ChatDetailScreen(chatId: chatId);
+                  (BuildContext context) => ChatDetailScreen(
+                    chatId: chatId.isEmpty ? 'defaultChatId' : chatId,
+                  );
             } else {
               builder = (BuildContext context) => const ChatListScreen();
             }

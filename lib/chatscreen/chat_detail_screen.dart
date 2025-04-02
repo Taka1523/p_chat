@@ -1,116 +1,92 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:p_chat/chatscreen/chat_logic.dart';
 
 class ChatDetailScreen extends StatefulWidget {
-  const ChatDetailScreen({super.key, required String chatId});
+  final String chatId;
+  const ChatDetailScreen({Key? key, required this.chatId}) : super(key: key);
 
   @override
-  State<ChatDetailScreen> createState() => _ChatDetailScreenState();
+  _ChatDetailScreenState createState() => _ChatDetailScreenState();
 }
 
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
-  final List<Map<String, dynamic>> _messages = [
-    {'sender': 'たかふみ', 'message': '在庫確認できました！', 'time': '10:32', 'isMe': true},
-    {
-      'sender': '薬剤師グループ',
-      'message': 'ありがとうございます！',
-      'time': '10:33',
-      'isMe': false,
-    },
-  ];
+  final ChatService _chatService = ChatService();
+  final TextEditingController _messageController = TextEditingController();
 
-  final TextEditingController _controller = TextEditingController();
-
-  void _sendMessage() {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
-
-    setState(() {
-      _messages.add({
-        'sender': 'たかふみ',
-        'message': text,
-        'time': TimeOfDay.now().format(context),
-        'isMe': true,
-      });
-    });
-    _controller.clear();
-  }
+  String get currentUserId =>
+      FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
 
   @override
   Widget build(BuildContext context) {
+    if (widget.chatId.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text("Chat Room")),
+        body: const Center(child: Text('無効なチャットIDです')),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('薬剤師グループ')),
+      appBar: AppBar(title: const Text("Chat Room")),
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(12.0),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                final isMe = msg['isMe'] as bool;
-
-                return Align(
-                  alignment:
-                      isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4.0),
-                    padding: const EdgeInsets.all(12.0),
-                    constraints: const BoxConstraints(maxWidth: 260),
-                    decoration: BoxDecoration(
-                      color: isMe ? Colors.blue[100] : Colors.grey[300],
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(12),
-                        topRight: const Radius.circular(12),
-                        bottomLeft: Radius.circular(isMe ? 12 : 0),
-                        bottomRight: Radius.circular(isMe ? 0 : 12),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _chatService.getMessages(widget.chatId),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Center(child: Text('エラーが発生しました'));
+                }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final messages = snapshot.data!.docs;
+                return ListView.builder(
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final data = messages[index].data() as Map<String, dynamic>;
+                    final text = data['text'] ?? '';
+                    final senderId = data['senderId'] ?? '';
+                    return ListTile(
+                      title: Text(text),
+                      subtitle: Text(
+                        senderId == currentUserId ? '自分' : '他ユーザー',
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment:
-                          isMe
-                              ? CrossAxisAlignment.end
-                              : CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          msg['message'] as String,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          msg['time'] as String,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.black54,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                    );
+                  },
                 );
               },
             ),
           ),
-          const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: SafeArea(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      decoration: const InputDecoration(
-                        hintText: 'メッセージを入力...',
-                        border: InputBorder.none,
-                      ),
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _messageController,
+                    decoration: const InputDecoration(
+                      hintText: 'メッセージを入力...',
+                      border: OutlineInputBorder(),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.send),
-                    onPressed: _sendMessage,
-                  ),
-                ],
-              ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send),
+                  onPressed: () async {
+                    final text = _messageController.text.trim();
+                    if (text.isNotEmpty) {
+                      await _chatService.sendMessage(
+                        chatId: widget.chatId,
+                        text: text,
+                        senderId: currentUserId,
+                      );
+                      _messageController.clear();
+                    }
+                  },
+                ),
+              ],
             ),
           ),
         ],
